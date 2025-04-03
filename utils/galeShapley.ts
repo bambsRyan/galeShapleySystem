@@ -198,7 +198,7 @@ export default class galeShapley {
   // It calculates the popularity of the preferences and then breaks ties for each proposer
   public processProposersWithTieBreaks(proposers: Proposer[]): Proposer[] {
     const popularity = this.calculatePopularity(proposers);
-    console.log(popularity);
+    // console.log(popularity);
     return proposers.map((proposer) => ({
       ...proposer,
       pref: this.breakTies(proposer, popularity),
@@ -282,10 +282,10 @@ export default class galeShapley {
     rankWeight: number = 0.5,
     scoreWeight: number = 0.5
   ): number {
-    console.log("Name", proposer.proposerName);
-    console.log("Course", reciever.recieverName);
-    console.log("Rank: ", rank);
-    console.log(reciever.pref.length);
+    // console.log("Name", proposer.proposerName);
+    // console.log("Course", reciever.recieverName);
+    // console.log("Rank: ", rank);
+    // console.log(reciever.pref.length);
     return (
       (rank / reciever.pref.length) * rankWeight + //0.5
       this.getMautScore(proposer, reciever) * scoreWeight
@@ -310,9 +310,10 @@ export default class galeShapley {
       admissionScore >= 1
         ? reciever.attributes.admissionScore[1]
         : admissionScore * reciever.attributes.admissionScore[1];
-    console.log(finalGWA, finalPLMATScore, finalAdmissionScore);
+    // console.log(finalGWA, finalPLMATScore, finalAdmissionScore);
     return finalGWA + finalPLMATScore + finalAdmissionScore;
   }
 }
 
 export { galeShapley, readProposer };
+export type { Proposer };
