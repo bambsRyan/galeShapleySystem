@@ -45,6 +45,8 @@ interface Proposer {
   proposerName: string;
   pref: string[];
   attributes: propAttributes;
+  current: number;
+  currentMaut: number;
 }
 
 interface Reciever {
@@ -57,6 +59,7 @@ interface recieverAttributes {
   GWA: [number, number];
   PLMAT_Score: [number, number];
   admissionScore: [number, number];
+  slot: number;
 }
 
 export default class galeShapley {
@@ -89,6 +92,8 @@ export default class galeShapley {
         PLMAT_Score: parseFloat(row[2 + numOfPref]),
         admissionScore: parseFloat(row[3 + numOfPref]),
       },
+      current: 0,
+      currentMaut: 0,
     };
   }
   private createReciever(row: string[], numOfPref: number = 3): Reciever {
@@ -109,6 +114,7 @@ export default class galeShapley {
           parseFloat(row[5 + numOfPref]),
           parseFloat(row[6 + numOfPref]),
         ],
+        slot: parseInt(row[7 + numOfPref]),
       },
     };
   }
@@ -119,13 +125,16 @@ export default class galeShapley {
   public getRecievers(): string[][] {
     return this.dataOfReciever;
   }
-
+  // This function assigns the proposers based on the data provided
+  // It maps through the dataOfProposer and creates a Proposer object for each row
   public assignProposers(numOfPref: number): Proposer[] {
     this.proposers = this.dataOfProposer.map((row) =>
       this.createProposer(row, numOfPref)
     );
     return this.proposers;
   }
+  // This function assigns the recievers based on the data provided
+  // It maps through the dataOfReciever and creates a Reciever object for each row
   public assignRecievers(numOfPref: number): Reciever[] {
     this.recievers = this.dataOfReciever.map((row) =>
       this.createReciever(row, numOfPref)
@@ -134,6 +143,8 @@ export default class galeShapley {
   }
 
   //calculates the popularity of the preference of the proposer
+  // It takes the preferences of each proposer and assigns a score based on their rank in the preference list
+  // The higher the rank, the lower the score. The scores are then summed up for each preference across all proposers
   public calculatePopularity(proposers: Proposer[]): Record<string, number> {
     const popularity: Record<string, number> = {};
 
@@ -154,7 +165,8 @@ export default class galeShapley {
 
     return popularity;
   }
-
+  // This function breaks ties in the preferences of the proposer based on the popularity of the preference
+  // It sorts the preferences in each cell based on the popularity score, and returns the sorted preferences
   private breakTies(
     proposer: Proposer,
     popularity: Record<string, number>
@@ -182,6 +194,8 @@ export default class galeShapley {
 
     return result;
   }
+  // This function processes the proposers with tie breaks
+  // It calculates the popularity of the preferences and then breaks ties for each proposer
   public processProposersWithTieBreaks(proposers: Proposer[]): Proposer[] {
     const popularity = this.calculatePopularity(proposers);
     console.log(popularity);
@@ -189,6 +203,115 @@ export default class galeShapley {
       ...proposer,
       pref: this.breakTies(proposer, popularity),
     }));
+  }
+  public modifiedGaleShapley(
+    proposers: Proposer[],
+    recievers: Reciever[]
+  ): Record<string, Proposer[]> | { error: string[] } {
+    const freeProposers = [...proposers];
+    const engagements: Record<string, Proposer[]> = {};
+
+    while (freeProposers.length > 0) {
+      const proposer = freeProposers.shift()!;
+      const preferredRecieverName = proposer.pref[0];
+
+      const reciever = recievers.find(
+        (reciever) => reciever.recieverName === preferredRecieverName
+      );
+
+      if (!reciever) {
+        return { error: ["Reciever not found"] };
+      }
+      if (!engagements[preferredRecieverName]) {
+        proposer.currentMaut = this.getScore(
+          reciever.pref.indexOf(proposer.proposerName) + 1,
+          proposer,
+          reciever
+        );
+        engagements[preferredRecieverName] = [proposer];
+        reciever.attributes.slot -= 1;
+      } else if (
+        engagements[preferredRecieverName] &&
+        reciever.attributes.slot > 0
+      ) {
+        proposer.currentMaut = this.getScore(
+          reciever.pref.indexOf(proposer.proposerName) + 1,
+          proposer,
+          reciever
+        );
+        engagements[preferredRecieverName].push(proposer);
+        reciever.attributes.slot -= 1;
+      } else if (
+        engagements[preferredRecieverName] &&
+        reciever.attributes.slot === 0
+      ) {
+        proposer.currentMaut = this.getScore(
+          reciever.pref.indexOf(proposer.proposerName) + 1,
+          proposer,
+          reciever
+        );
+        const currentEngagements = engagements[preferredRecieverName];
+        const lowestRankedProposer = currentEngagements.reduce(
+          (prev, curr) => (prev.currentMaut < curr.currentMaut ? prev : curr),
+          currentEngagements[0]
+        );
+
+        if (proposer.currentMaut > lowestRankedProposer.currentMaut) {
+          engagements[preferredRecieverName] = engagements[
+            preferredRecieverName
+          ].filter((p) => p !== lowestRankedProposer);
+          freeProposers.push(lowestRankedProposer);
+          engagements[preferredRecieverName].push(proposer);
+        } else {
+          proposer.pref.shift();
+          proposer.current += 1;
+          freeProposers.push(proposer);
+        }
+      } else {
+        proposer.pref.shift();
+        proposer.current += 1;
+        freeProposers.push(proposer);
+      }
+    }
+    return engagements;
+  }
+  public getScore(
+    rank: number,
+    proposer: Proposer,
+    reciever: Reciever,
+    rankWeight: number = 0.5,
+    scoreWeight: number = 0.5
+  ): number {
+    console.log("Name", proposer.proposerName);
+    console.log("Course", reciever.recieverName);
+    console.log("Rank: ", rank);
+    console.log(reciever.pref.length);
+    return (
+      (rank / reciever.pref.length) * rankWeight + //0.5
+      this.getMautScore(proposer, reciever) * scoreWeight
+    );
+  }
+  public getMautScore(proposer: Proposer, reciever: Reciever): number {
+    const GWAScore = proposer.attributes.GWA / reciever.attributes.GWA[0];
+    const PLMATScore =
+      proposer.attributes.PLMAT_Score / reciever.attributes.PLMAT_Score[0];
+    const admissionScore =
+      proposer.attributes.admissionScore /
+      reciever.attributes.admissionScore[0];
+    const finalGWA =
+      GWAScore >= 1
+        ? reciever.attributes.GWA[1]
+        : GWAScore * reciever.attributes.GWA[1];
+    const finalPLMATScore =
+      PLMATScore >= 1
+        ? reciever.attributes.PLMAT_Score[1]
+        : PLMATScore * reciever.attributes.PLMAT_Score[1];
+    const finalAdmissionScore =
+      admissionScore >= 1
+        ? reciever.attributes.admissionScore[1]
+        : admissionScore * reciever.attributes.admissionScore[1];
+    console.log(finalGWA, finalPLMATScore, finalAdmissionScore);
+    return finalGWA + finalPLMATScore + finalAdmissionScore;
   }
 }
 

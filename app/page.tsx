@@ -14,9 +14,15 @@ export default function Home() {
     const structuredReciever = gs.assignRecievers(proposers.length);
     const originalProposers =
       gs.processProposersWithTieBreaks(structuredProposer);
-    console.log(originalProposers);
-    console.log(structuredProposer);
-    console.log(structuredReciever);
+    // .sort(() => Math.random() - 0.5);
+    const report = gs.modifiedGaleShapley(
+      originalProposers,
+      structuredReciever
+    );
+    console.log(report);
+    // console.log(originalProposers);
+    // console.log(structuredProposer);
+    // console.log(structuredReciever);
   };
 
   return (
