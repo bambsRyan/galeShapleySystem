@@ -2,7 +2,11 @@ import { Proposer } from "@/utils/galeShapley";
 
 function CourseTable(data: Record<string, Proposer[]>) {
   const allStudents = Object.values(data).flat();
-
+  allStudents.sort((a, b) => {
+    const nameA = a.proposerName.toLowerCase();
+    const nameB = b.proposerName.toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
   if (allStudents.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -12,7 +16,7 @@ function CourseTable(data: Record<string, Proposer[]>) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border shadow-sm max-w-2xl mx-auto min-w-full">
+    <div className="overflow-x-auto rounded-lg border shadow-sm max-w-2xl mx-auto min-w-full max-h-[600px]">
       <table className="min-w-full divide-y divide-gray-200 ">
         <thead className="bg-gray-50">
           <tr>
@@ -37,7 +41,6 @@ function CourseTable(data: Record<string, Proposer[]>) {
                 {student.pref[0]}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                {/* {student.current + 1} */}
                 {student.currentMaut}
               </td>
             </tr>

@@ -67,12 +67,16 @@ export default class galeShapley {
   private recievers: Reciever[];
   private dataOfReciever: string[][];
   private dataOfProposer: string[][];
+  private waitlist: Proposer[];
+  private logs: string[];
 
   constructor(proposer: string[][], reciever: string[][]) {
     this.dataOfReciever = reciever.filter((row) => this.isValidRow(row));
     this.dataOfProposer = proposer.filter((row) => this.isValidRow(row));
     this.proposers = [];
     this.recievers = [];
+    this.waitlist = [];
+    this.logs = [];
   }
 
   private isValidRow(row: string[]): boolean {
@@ -214,7 +218,16 @@ export default class galeShapley {
     while (freeProposers.length > 0) {
       const proposer = freeProposers.shift()!;
       const preferredRecieverName = proposer.pref[0];
-
+      if (!preferredRecieverName) {
+        this.waitlist.push(proposer);
+        this.logs.push(
+          `${proposer.proposerName} has no more preferences left and is added to the waitlist`
+        );
+        continue;
+      }
+      // this.logs.push(
+      //   `${proposer.proposerName} is proposing to ${preferredRecieverName}`
+      // );
       const reciever = recievers.find(
         (reciever) => reciever.recieverName === preferredRecieverName
       );
@@ -230,6 +243,9 @@ export default class galeShapley {
         );
         engagements[preferredRecieverName] = [proposer];
         reciever.attributes.slot -= 1;
+        this.logs.push(
+          `${proposer.proposerName} is now matched to ${preferredRecieverName}`
+        );
       } else if (
         engagements[preferredRecieverName] &&
         reciever.attributes.slot > 0
@@ -241,6 +257,9 @@ export default class galeShapley {
         );
         engagements[preferredRecieverName].push(proposer);
         reciever.attributes.slot -= 1;
+        this.logs.push(
+          `${proposer.proposerName} is now matched to ${preferredRecieverName}`
+        );
       } else if (
         engagements[preferredRecieverName] &&
         reciever.attributes.slot === 0
@@ -262,10 +281,22 @@ export default class galeShapley {
           ].filter((p) => p !== lowestRankedProposer);
           freeProposers.push(lowestRankedProposer);
           engagements[preferredRecieverName].push(proposer);
+          this.logs.push(
+            `${proposer.proposerName} has a better score than ${lowestRankedProposer.proposerName} and is now matched to ${preferredRecieverName}`
+          );
+          // this.logs.push(
+          //   `${lowestRankedProposer.proposerName} is now free and can propose again`
+          // );
         } else {
           proposer.pref.shift();
           proposer.current += 1;
           freeProposers.push(proposer);
+          this.logs.push(
+            `${proposer.proposerName} has a lower score than ${lowestRankedProposer.proposerName} and is now free to propose again`
+          );
+          // this.logs.push(
+          //   `${lowestRankedProposer.proposerName} is still matched to ${preferredRecieverName}`
+          // );
         }
       } else {
         proposer.pref.shift();
@@ -311,17 +342,41 @@ export default class galeShapley {
       admissionScore >= 1
         ? reciever.attributes.admissionScore[1]
         : admissionScore * reciever.attributes.admissionScore[1];
-    console.log(
-      proposer.proposerName,
-      ":",
-      finalGWA + finalPLMATScore + finalAdmissionScore
-    );
+    // console.log(
+    //   proposer.proposerName,
+    //   ":",
+    //   finalGWA + finalPLMATScore + finalAdmissionScore
+    // );
     return finalGWA + finalPLMATScore + finalAdmissionScore;
   }
   public getInverse(num: number, maxVal: number): number {
     return 1 + maxVal - num;
   }
+  public getLogs(): string[] {
+    return this.logs;
+  }
+}
+function excelFile(data: Proposer[]): File {
+  console.log(data);
+  const input = data.map((item) => ({
+    Student: item.proposerName,
+    Course: item.pref[0],
+  }));
+  const worksheet = XLSX.utils.json_to_sheet(input, { skipHeader: true });
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+  const fileName = "output.xlsx";
+  XLSX.writeFile(workbook, fileName);
+  const excelBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+  });
+  const file = new File([excelBuffer], fileName, {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  return file;
 }
 
-export { galeShapley, readProposer };
+export { galeShapley, readProposer, excelFile };
 export type { Proposer };
