@@ -287,7 +287,8 @@ export default class galeShapley {
     // console.log("Rank: ", rank);
     // console.log(reciever.pref.length);
     return (
-      (rank / reciever.pref.length) * rankWeight + //0.5
+      (this.getInverse(rank, reciever.pref.length) / reciever.pref.length) *
+        rankWeight + //0.5
       this.getMautScore(proposer, reciever) * scoreWeight
     );
   }
@@ -310,8 +311,15 @@ export default class galeShapley {
       admissionScore >= 1
         ? reciever.attributes.admissionScore[1]
         : admissionScore * reciever.attributes.admissionScore[1];
-    // console.log(finalGWA, finalPLMATScore, finalAdmissionScore);
+    console.log(
+      proposer.proposerName,
+      ":",
+      finalGWA + finalPLMATScore + finalAdmissionScore
+    );
     return finalGWA + finalPLMATScore + finalAdmissionScore;
+  }
+  public getInverse(num: number, maxVal: number): number {
+    return 1 + maxVal - num;
   }
 }
 

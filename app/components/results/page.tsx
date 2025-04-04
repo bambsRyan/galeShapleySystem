@@ -22,8 +22,8 @@ function CourseTable(data: Record<string, Proposer[]>) {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ">
               Course
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              GWA
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
+              Student&apos;s Prefefence
             </th>
           </tr>
         </thead>
@@ -37,7 +37,8 @@ function CourseTable(data: Record<string, Proposer[]>) {
                 {student.pref[0]}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                {student.attributes.GWA}
+                {/* {student.current + 1} */}
+                {student.currentMaut}
               </td>
             </tr>
           ))}

@@ -24,7 +24,7 @@ export default function Home() {
       structuredReciever
     );
     setResult(report);
-    console.log(result);
+    console.log(report);
     // console.log(originalProposers);
     // console.log(structuredProposer);
     // console.log(structuredReciever);
@@ -35,6 +35,14 @@ export default function Home() {
       <Nav />
       <div className="w-full h-2 bg-[#002060]"></div>
       <div className="w-full h-2 bg-[#A51B0F]"></div>
+      {!result && (
+        <div className="w-full flex items-center justify-center pt-20 flex-col">
+          <p className="text-[#002060] text-3xl font-serif wrap flex justify-center">
+            Modified Gale Shapley Algorithm
+          </p>
+          <span className="text-[#A51B0F]">Course-Student Matching </span>
+        </div>
+      )}
       <div className="w-full h-full items-center justify-center flex flex-col gap-4 px-10">
         {!result && <AddFile onInitialize={(file: File) => mod(file)} />}
         {result && !("error" in result) && (
