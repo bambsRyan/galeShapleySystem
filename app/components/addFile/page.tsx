@@ -50,15 +50,13 @@ export default function AddFile({
           <h3 className="text-lg font-medium text-gray-800">
             Upload your data file
           </h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Supported formats: .xlsx, .csv
-          </p>
+          <p className="text-sm text-gray-500 mt-1">Supported formats: .xlsx</p>
         </div>
 
         <div className="relative w-full h-40">
           <input
             type="file"
-            accept=".xlsx, .csv"
+            accept=".xlsx"
             onChange={handleFileChange}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             id="file-upload"

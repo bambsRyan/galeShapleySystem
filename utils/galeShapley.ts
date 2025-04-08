@@ -16,14 +16,12 @@ function readProposer(file: File, sheetIndex: number = 0): Promise<string[][]> {
         const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, {
           header: 1,
         });
-
         // Process each cell in each row
         const result: string[][] = jsonData.map((row) =>
           row.map((cell) =>
             cell !== null && cell !== undefined ? String(cell) : ""
           )
         );
-
         resolve(result);
       } catch (error) {
         reject(error);
@@ -44,8 +42,12 @@ interface propAttributes {
 interface Proposer {
   proposerName: string;
   pref: string[];
+  origpref: string[];
   attributes: propAttributes;
   current: number;
+  origcurrent: number;
+  PositionToMatch: number;
+  OrigPositionToMatch: number;
   currentMaut: number;
 }
 
@@ -60,6 +62,7 @@ interface recieverAttributes {
   PLMAT_Score: [number, number];
   admissionScore: [number, number];
   slot: number;
+  origslot: number;
 }
 
 export default class galeShapley {
@@ -69,6 +72,7 @@ export default class galeShapley {
   private dataOfProposer: string[][];
   private waitlist: Proposer[];
   private logs: string[];
+  private originalLogs: string[];
 
   constructor(proposer: string[][], reciever: string[][]) {
     this.dataOfReciever = reciever.filter((row) => this.isValidRow(row));
@@ -77,6 +81,7 @@ export default class galeShapley {
     this.recievers = [];
     this.waitlist = [];
     this.logs = [];
+    this.originalLogs = [];
   }
 
   private isValidRow(row: string[]): boolean {
@@ -91,13 +96,17 @@ export default class galeShapley {
     return {
       proposerName: row[0].trim(),
       pref: preferences,
+      origpref: preferences,
       attributes: {
         GWA: parseFloat(row[1 + numOfPref]),
         PLMAT_Score: parseFloat(row[2 + numOfPref]),
         admissionScore: parseFloat(row[3 + numOfPref]),
       },
       current: 0,
+      origcurrent: 0,
       currentMaut: 0,
+      PositionToMatch: 0,
+      OrigPositionToMatch: 0,
     };
   }
   private createReciever(row: string[], numOfPref: number = 3): Reciever {
@@ -119,6 +128,7 @@ export default class galeShapley {
           parseFloat(row[6 + numOfPref]),
         ],
         slot: parseInt(row[7 + numOfPref]),
+        origslot: parseInt(row[7 + numOfPref]),
       },
     };
   }
@@ -214,7 +224,6 @@ export default class galeShapley {
   ): Record<string, Proposer[]> | { error: string[] } {
     const freeProposers = [...proposers];
     const engagements: Record<string, Proposer[]> = {};
-
     while (freeProposers.length > 0) {
       const proposer = freeProposers.shift()!;
       const preferredRecieverName = proposer.pref[0];
@@ -223,11 +232,9 @@ export default class galeShapley {
         this.logs.push(
           `${proposer.proposerName} has no more preferences left and is added to the waitlist`
         );
+
         continue;
       }
-      // this.logs.push(
-      //   `${proposer.proposerName} is proposing to ${preferredRecieverName}`
-      // );
       const reciever = recievers.find(
         (reciever) => reciever.recieverName === preferredRecieverName
       );
@@ -241,6 +248,8 @@ export default class galeShapley {
           proposer,
           reciever
         );
+        proposer.PositionToMatch =
+          reciever.pref.indexOf(proposer.proposerName) + 1;
         engagements[preferredRecieverName] = [proposer];
         reciever.attributes.slot -= 1;
         this.logs.push(
@@ -255,6 +264,8 @@ export default class galeShapley {
           proposer,
           reciever
         );
+        proposer.PositionToMatch =
+          reciever.pref.indexOf(proposer.proposerName) + 1;
         engagements[preferredRecieverName].push(proposer);
         reciever.attributes.slot -= 1;
         this.logs.push(
@@ -280,13 +291,12 @@ export default class galeShapley {
             preferredRecieverName
           ].filter((p) => p !== lowestRankedProposer);
           freeProposers.push(lowestRankedProposer);
+          proposer.PositionToMatch =
+            reciever.pref.indexOf(proposer.proposerName) + 1;
           engagements[preferredRecieverName].push(proposer);
           this.logs.push(
             `${proposer.proposerName} has a better score than ${lowestRankedProposer.proposerName} and is now matched to ${preferredRecieverName}`
           );
-          // this.logs.push(
-          //   `${lowestRankedProposer.proposerName} is now free and can propose again`
-          // );
         } else {
           proposer.pref.shift();
           proposer.current += 1;
@@ -294,9 +304,6 @@ export default class galeShapley {
           this.logs.push(
             `${proposer.proposerName} has a lower score than ${lowestRankedProposer.proposerName} and is now free to propose again`
           );
-          // this.logs.push(
-          //   `${lowestRankedProposer.proposerName} is still matched to ${preferredRecieverName}`
-          // );
         }
       } else {
         proposer.pref.shift();
@@ -306,6 +313,76 @@ export default class galeShapley {
     }
     return engagements;
   }
+  public OriginalGaleShapley(
+    proposers: Proposer[],
+    recievers: Reciever[]
+  ): Record<string, Proposer[]> | { error: string[] } {
+    const freeProposers = [...proposers];
+    const engagements: Record<string, Proposer[]> = {};
+    while (freeProposers.length > 0) {
+      const proposer = freeProposers.shift()!;
+      console.log(proposer.origpref[0]);
+      const preferredRecieverName = proposer.origpref[0];
+      if (!preferredRecieverName) {
+        continue;
+      }
+      const reciever = recievers.find(
+        (reciever) => reciever.recieverName === preferredRecieverName
+      );
+      console.log(reciever);
+      if (!reciever) {
+        return { error: ["Reciever not found"] };
+      }
+      if (!engagements[preferredRecieverName]) {
+        proposer.OrigPositionToMatch =
+          reciever.pref.indexOf(proposer.proposerName) + 1;
+        engagements[preferredRecieverName] = [proposer];
+        reciever.attributes.origslot -= 1;
+      } else if (
+        engagements[preferredRecieverName] &&
+        reciever.attributes.origslot > 0
+      ) {
+        proposer.OrigPositionToMatch =
+          reciever.pref.indexOf(proposer.proposerName) + 1;
+        engagements[preferredRecieverName].push(proposer);
+        reciever.attributes.origslot -= 1;
+      } else if (
+        engagements[preferredRecieverName] &&
+        reciever.attributes.origslot === 0
+      ) {
+        const currentEngagements = engagements[preferredRecieverName];
+        const lowestRankedProposer = currentEngagements.reduce(
+          (prev, curr) =>
+            reciever.pref.indexOf(prev.proposerName) <
+            reciever.pref.indexOf(curr.proposerName)
+              ? prev
+              : curr,
+          currentEngagements[0]
+        );
+
+        if (proposer.current < lowestRankedProposer.current) {
+          proposer.OrigPositionToMatch =
+            reciever.pref.indexOf(proposer.proposerName) + 1;
+          engagements[preferredRecieverName] = engagements[
+            preferredRecieverName
+          ].filter((p) => p !== lowestRankedProposer);
+          freeProposers.push(lowestRankedProposer);
+          engagements[preferredRecieverName].push(proposer);
+        } else {
+          proposer.origpref.shift();
+          proposer.origcurrent += 1;
+          freeProposers.push(proposer);
+        }
+      } else {
+        proposer.origpref.shift();
+        proposer.origcurrent += 1;
+        freeProposers.push(proposer);
+      }
+    }
+    console.log("engagements", engagements);
+    return engagements;
+  }
+
   public getScore(
     rank: number,
     proposer: Proposer,
@@ -313,10 +390,6 @@ export default class galeShapley {
     rankWeight: number = 0.5,
     scoreWeight: number = 0.5
   ): number {
-    // console.log("Name", proposer.proposerName);
-    // console.log("Course", reciever.recieverName);
-    // console.log("Rank: ", rank);
-    // console.log(reciever.pref.length);
     return (
       (this.getInverse(rank, reciever.pref.length) / reciever.pref.length) *
         rankWeight + //0.5
@@ -355,9 +428,12 @@ export default class galeShapley {
   public getLogs(): string[] {
     return this.logs;
   }
+  public getWaitlist(): Proposer[] {
+    return this.waitlist;
+  }
 }
+
 function excelFile(data: Proposer[]): File {
-  console.log(data);
   const input = data.map((item) => ({
     Student: item.proposerName,
     Course: item.pref[0],

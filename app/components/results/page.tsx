@@ -1,6 +1,9 @@
 import { Proposer } from "@/utils/galeShapley";
-
-function CourseTable(data: Record<string, Proposer[]>) {
+interface CourseTableProps {
+  data: Proposer[];
+  message: string;
+}
+function CourseTable({ data, message }: CourseTableProps) {
   const allStudents = Object.values(data).flat();
   allStudents.sort((a, b) => {
     const nameA = a.proposerName.toLowerCase();
@@ -13,6 +16,8 @@ function CourseTable(data: Record<string, Proposer[]>) {
         No student data available
       </div>
     );
+  } else {
+    console.log(allStudents);
   }
 
   return (
@@ -26,9 +31,11 @@ function CourseTable(data: Record<string, Proposer[]>) {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ">
               Course
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
-              Student&apos;s Prefefence
-            </th>
+            {message === "modified" && (
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
+                Student&apos;s Prefefence
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -38,11 +45,13 @@ function CourseTable(data: Record<string, Proposer[]>) {
                 {student.proposerName}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-blue-600 font-medium">
-                {student.pref[0]}
+                {message === "original" ? student.origpref[0] : student.pref[0]}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                {student.currentMaut}
-              </td>
+              {message === "modified" && (
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {student.currentMaut}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
